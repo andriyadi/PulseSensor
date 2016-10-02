@@ -55,7 +55,7 @@ void setup() {
 //    ticker.attach_ms(200, readADC); //-> just for testig
 
 #if USE_CALLBACK
-    sensor.onBMPAvailable([](int BPM) {
+    sensor.onBPMAvailable([](int BPM) {
         //Serial.printf("BPM: %d\n", BPM);
 
         //qualifies BPM for a grown-up

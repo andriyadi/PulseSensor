@@ -178,7 +178,7 @@ int PulseSensor::doReadRawSignal() {
     return  lastRawSignal_;
 }
 
-void PulseSensor::onBMPAvailable(PulseSensorBPMAvailableCallback cb) {
+void PulseSensor::onBPMAvailable(PulseSensorBPMAvailableCallback cb) {
     bpmAvailableCallback = cb;
 }
 

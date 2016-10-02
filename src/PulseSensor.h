@@ -50,7 +50,7 @@ public:
     void onReadingRawSignal(PulseSensorRawSignalReadingCallback cb);
     int doReadRawSignal();
 
-    void onBMPAvailable(PulseSensorBPMAvailableCallback cb);
+    void onBPMAvailable(PulseSensorBPMAvailableCallback cb);
     void onPulseDetectionCallback(PulseSensorPulseDetectionCallback cb);
 
 private:
