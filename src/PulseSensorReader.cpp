@@ -7,6 +7,7 @@
 //Set this to 1 to wait for callback when BPM available, or set to 0 to poll the last read BPM and display using serial monitor or desktop app
 #define USE_CALLBACK      1
 
+//Set to 1 if you're using ESPectro board
 #define USE_ESPECTRO_BOARD 1
 
 #if USE_ESPECTRO_BOARD
@@ -59,16 +60,16 @@ void setup() {
         }
     });
 
-//    sensor.onPulseDetectionCallback([](bool detected) {
-//#if USE_ESPECTRO_BOARD
-//        if (detected) {
-//            board.turnOnLED();
-//        }
-//        else {
-//            board.turnOffLED();
-//        }
-//#endif
-//    });
+    sensor.onPulseDetectionCallback([](bool detected) {
+#if USE_ESPECTRO_BOARD
+        if (detected) {
+            board.turnOnLED();
+        }
+        else {
+            board.turnOffLED();
+        }
+#endif
+    });
 
 #endif
 
