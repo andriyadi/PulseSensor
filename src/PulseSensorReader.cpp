@@ -2,17 +2,22 @@
 #include "PulseSensor.h"
 
 //Set USE_EXTERNAL_ADC to 1 if you have ESPectro Base (which has external ADC), otherwise set 0 to use INTERNAL ESP8266 ADC
-#define USE_EXTERNAL_ADC  1
+#define USE_EXTERNAL_ADC    1
 
 //Set this to 1 to wait for callback when BPM available, or set to 0 to poll the last read BPM and display using serial monitor or desktop app
-#define USE_CALLBACK      1
+#define USE_CALLBACK        1
 
 //Set to 1 if you're using ESPectro board
-#define USE_ESPECTRO_BOARD 1
+#define USE_ESPECTRO_BOARD  1
+
+//Set to 1 to start measurement automatically upon program start
+#define AUTO_START_MEASUREMENT  0
+
 
 #if USE_ESPECTRO_BOARD
 #include "ESPectro.h"
 ESPectro board;
+ESPectro_Button onBoardButton;
 #endif
 
 #if USE_EXTERNAL_ADC
@@ -27,6 +32,7 @@ static boolean serialVisual = false;
 
 //Ticker ticker;
 PulseSensor sensor;
+int lastBPM;
 
 void readADC() {
 #if USE_EXTERNAL_ADC
@@ -52,12 +58,15 @@ void setup() {
     sensor.onBMPAvailable([](int BPM) {
         //Serial.printf("BPM: %d\n", BPM);
 
-        if (BPM > BPM+20 || BPM < BPM-20|| BPM > 160 || BPM < 54) {
+        //qualifies BPM for a grown-up
+        if (BPM > lastBPM+20 || BPM < lastBPM-20|| BPM > 160 || BPM < 54) {
             Serial.printf("[Not Valid] BPM: %d\n", BPM);
         }
         else {
             Serial.printf("[Valid] BPM: %d\n", BPM);
         }
+
+        lastBPM = BPM;
     });
 
     sensor.onPulseDetectionCallback([](bool detected) {
@@ -82,10 +91,27 @@ void setup() {
         raw = analogRead(0);
 #endif
 
-        //Serial.printf("Raw 1: %d\n", raw);
     });
 
+#if AUTO_START_MEASUREMENT
     sensor.start();
+#else
+    #if USE_ESPECTRO_BOARD
+
+    onBoardButton.begin();
+    onBoardButton.onButtonUp([](){
+        if (sensor.isStarted()) {
+            Serial.println("Pulse sensor stopped");
+            sensor.stop();
+        }
+        else {
+            Serial.println("Pulse sensor started");
+            sensor.start();
+        }
+    });
+
+    #endif
+#endif
 }
 
 #if !USE_CALLBACK
@@ -146,7 +172,6 @@ void sendDataToSerial(char symbol, int data ){
     Serial.println(data);
 }
 
-
 void serialOutput(){   // Decide How To Output Serial.
     if (serialVisual == true){
         arduinoSerialMonitorVisual('-', sensor.doReadRawSignal());   // goes to function that makes Serial Monitor Visualizer
@@ -159,7 +184,8 @@ void serialOutputWhenBeatHappens(){
     if (serialVisual == true){            //  Code to Make the Serial Monitor Visualizer Work
         Serial.print("*** Heart-Beat Happened *** ");  //ASCII Art Madness
         Serial.print("BPM: ");
-        Serial.print(sensor.getLastBPM());
+        lastBPM = sensor.getLastBPM();
+        Serial.print(lastBPM);
         Serial.print("  ");
     } else{
         sendDataToSerial('B', sensor.getLastBPM());   // send heart rate with a 'B' prefix
@@ -170,6 +196,12 @@ void serialOutputWhenBeatHappens(){
 
 // the loop function runs over and over again forever
 void loop() {
+
+#if !AUTO_START_MEASUREMENT
+#if USE_ESPECTRO_BOARD
+    onBoardButton.loop();
+#endif
+#endif
 
 #if !USE_CALLBACK
     serialOutput();

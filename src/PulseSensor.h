@@ -43,6 +43,10 @@ public:
         return quantifiedSelf_;
     }
 
+    bool isStarted() {
+        return isStarted_;
+    }
+
     void onReadingRawSignal(PulseSensorRawSignalReadingCallback cb);
     int doReadRawSignal();
 
@@ -57,7 +61,7 @@ private:
 
     Ticker *readingTicker_ = NULL;
     int lastRawSignal_ = 0;
-    bool isStarted = false;
+    bool isStarted_ = false;
 
     volatile int BPM_;                         // int that holds raw Analog in 0. updated every 2mS
     volatile bool quantifiedSelf_ = false;     // becomes true when Arduoino finds a beat.

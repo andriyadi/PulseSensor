@@ -4,8 +4,6 @@
 
 #include "PulseSensor.h"
 
-
-
 void process(PulseSensor *sensor) {
     int raw = sensor->doReadRawSignal();
 
@@ -29,7 +27,7 @@ void PulseSensor::start() {
         readingTicker_ = new Ticker();
     }
 
-    isStarted = true;
+    isStarted_ = true;
 
 //    IBI_ = 600;
 //    pulseDetected_ = false;
@@ -47,7 +45,7 @@ void PulseSensor::start() {
 }
 
 void PulseSensor::stop(){
-    isStarted = false;
+    isStarted_ = false;
 
     thresh_ = 512;                          // set thresh default
     peak_ = 512;                            // set P default
