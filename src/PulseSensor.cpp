@@ -61,10 +61,6 @@ void PulseSensor::stop(){
     readingTicker_->detach();
 }
 
-void PulseSensor::handle() {
-
-}
-
 void PulseSensor::processSignal(int signalData) {
 
 //    Serial.printf("Raw 2: %d\n", signalData);

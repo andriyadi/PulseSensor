@@ -13,6 +13,10 @@
 //Set to 1 to start measurement automatically upon program start
 #define AUTO_START_MEASUREMENT  0
 
+#define OLED_SSD1306_DISPLAY    1
+
+#define USE_CLOUD               1
+
 
 #if USE_ESPECTRO_BOARD
 #include "ESPectro.h"
@@ -23,6 +27,20 @@ ESPectro_Button onBoardButton;
 #if USE_EXTERNAL_ADC
 #include <ESPectroBase.h>
 ESPectroBase base;
+#endif
+
+#if OLED_SSD1306_DISPLAY
+#include "UIService.h"
+UIService uiSvc;
+#endif
+
+#if USE_CLOUD
+#include "MakestroCloudClient.h"
+#include "DCX_AppSetting.h"
+#include "DCX_WifiManager.h"
+
+MakestroCloudClient makestroCloudClient("andri", "vByOlaA1UZyv8Iw7O9T64F55d9hH7iXZ1o1xkZVogPwVDjK42alDsFInJVb4gGL4", "heartbeat");
+DCX_WifiManager wifiManager(AppSetting);
 #endif
 
 #if !USE_CALLBACK
@@ -43,10 +61,101 @@ void readADC() {
     Serial.printf("Raw: %d\n", raw);
 }
 
+#if USE_CLOUD
+
+void onMqttConnect() {
+    Serial.println("** Connected to the broker **");
+
+    MakestroCloudSubscribedPropertyCallback propsCallback = [=](const String prop, const String value) {
+        Serial.print("incoming: ");
+        Serial.print(prop);
+        Serial.print(" = ");
+        Serial.print(value);
+        Serial.println();
+//
+//        if (value.equals("1")) {
+//            board.turnOnLED();
+//            neopixel.turnOn(HtmlColor(0x00f0af));
+//            //gpioEx.digitalWrite(ESPECTRO_BASE_GPIOEX_LED_PIN, HIGH);
+//        }
+//        else {
+//            board.turnOffLED();
+//            neopixel.turnOff();
+//            //gpioEx.digitalWrite(ESPECTRO_BASE_GPIOEX_LED_PIN, LOW);
+//        }
+    };
+
+    makestroCloudClient.subscribeProperty("switch", propsCallback);
+//    makestroCloudClient.subscribeProperty("hue", propsCallback);
+//    makestroCloudClient.subscribe("andri/light/control", 2);
+//    makestroCloudClient.publishData("{\"temperature\":23}");
+
+//    makestroCloudClient.publishKeyValue("temperature", 25);
+
+    //JsonKeyValueMap keyVal = {{"temperature", 35}, {"hue", 100}};
+    //makestroCloudClient.publishMap(keyVal, "tweet_too_hot", "chphNHI8LjAGwEt87NALFK");
+
+    //makestroCloudClient.triggerIFTTTEvent("notif_too_cold");
+}
+
+void onMqttDisconnect(AsyncMqttClientDisconnectReason reason) {
+    Serial.println("** Disconnected from the broker **");
+}
+
+void onMqttSubscribe(uint16_t packetId, uint8_t qos) {
+    Serial.println("** Subscribe acknowledged **");
+    Serial.print("  packetId: ");
+    Serial.println(packetId);
+    Serial.print("  qos: ");
+    Serial.println(qos);
+}
+
+#endif
+
 // the setup function runs once when you press reset or power the board
 void setup() {
     Serial.begin(115200);
     while(!Serial);
+
+#if OLED_SSD1306_DISPLAY
+    uiSvc.begin();
+#endif
+
+#if USE_CLOUD
+
+    AppSetting.load();
+    AppSetting.debugPrintTo(Serial);
+
+    wifiManager.onWifiConnectStarted([]() {
+        DEBUG_SERIAL("WIFI CONNECTING STARTED\r\n");
+    });
+
+    wifiManager.onWifiConnected([](boolean newConn) {
+        DEBUG_SERIAL("WIFI CONNECTED\r\n");
+
+        board.turnOffLED();
+
+        makestroCloudClient.onConnect(onMqttConnect);
+        makestroCloudClient.onDisconnect(onMqttDisconnect);
+        makestroCloudClient.onSubscribe(onMqttSubscribe);
+
+        makestroCloudClient.connect();
+
+    });
+
+    wifiManager.onWifiConnecting([](unsigned long elapsed) {
+        //DEBUG_SERIAL("%d\r\n", elapsed);
+        board.toggleLED();
+    });
+
+    wifiManager.onWifiDisconnected([](WiFiDisconnectReason reason) {
+        DEBUG_SERIAL("WIFI GIVE UP\r\n");
+        //board.turnOffLED();
+    });
+
+//    wifiManager.begin();
+    wifiManager.begin("DyWare-AP3", "p@ssw0rd");
+#endif
 
 #if USE_EXTERNAL_ADC
     base.beginADC();
@@ -64,6 +173,14 @@ void setup() {
         }
         else {
             Serial.printf("[Valid] BPM: %d\n", BPM);
+            uiSvc.setBPMValue(BPM);
+
+#if USE_CLOUD
+            if (makestroCloudClient.connected()) {
+                makestroCloudClient.publishKeyValue("BPM", BPM);
+            }
+#endif
+
         }
 
         lastBPM = BPM;
@@ -196,6 +313,14 @@ void serialOutputWhenBeatHappens(){
 
 // the loop function runs over and over again forever
 void loop() {
+
+#if USE_CLOUD
+    wifiManager.loop();
+#endif
+
+#if OLED_SSD1306_DISPLAY
+    uiSvc.loop();
+#endif
 
 #if !AUTO_START_MEASUREMENT
 #if USE_ESPECTRO_BOARD
